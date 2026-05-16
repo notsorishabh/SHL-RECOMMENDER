@@ -24,19 +24,15 @@ MATRIX: np.ndarray = _idx["matrix"]
 VOCABULARY: dict = _idx["vocabulary"]
 VECTOR_DIMENSION: int = _idx["vector_dimension"]
 
-try:
-    import faiss
 
-    if FAISS_PATH.exists():
-        FAISS_INDEX = faiss.read_index(str(FAISS_PATH))
-    else:
-        FAISS_INDEX = faiss.IndexFlatIP(VECTOR_DIMENSION)
-        FAISS_INDEX.add(MATRIX.astype("float32"))
-except ImportError as exc:
-    raise RuntimeError(
-        "faiss-cpu is required for retrieval. Install dependencies with `uv sync` "
-        "or `pip install -r requirements.txt`."
-    ) from exc
+import faiss
+
+if FAISS_PATH.exists():
+    FAISS_INDEX = faiss.read_index(str(FAISS_PATH))
+else:
+    FAISS_INDEX = faiss.IndexFlatIP(VECTOR_DIMENSION)
+    FAISS_INDEX.add(MATRIX.astype("float32"))
+
 
 # Build a URL-to-item lookup for grounding checks.
 URL_SET = {item["url"] for item in CATALOG}
