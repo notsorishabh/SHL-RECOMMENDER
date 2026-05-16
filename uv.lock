@@ -499,7 +499,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "faiss-cpu", specifier = ">=1.9.0" },
-    { name = "faiss-cpu", marker = "sys_platform != 'win32'", specifier = ">=1.9.0" },
     { name = "fastapi", specifier = "==0.115.0" },
     { name = "google-genai", specifier = ">=1.0.0" },
     { name = "numpy", specifier = ">=1.26.0" },

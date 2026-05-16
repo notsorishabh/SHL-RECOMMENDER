@@ -1,7 +1,12 @@
 import os
 from fastapi import HTTPException, APIRouter
 from model.model import ChatRequest, ChatResponse
-from Prompt.build_prompt import _build_system_prompt, _extract_json, _validate_recommendations
+from Prompt.build_prompt import (
+    _build_system_prompt,
+    _extract_json,
+    _extract_recommendations_from_text,
+    _validate_recommendations,
+)
 
 router = APIRouter()
 
@@ -102,6 +107,8 @@ def chat(req: ChatRequest):
         eoc = False
 
     recommendations = _validate_recommendations(raw_recs)
+    if not recommendations:
+        recommendations = _extract_recommendations_from_text(f"{reply}\n{raw_text}")
 
     return ChatResponse(
         reply=reply,

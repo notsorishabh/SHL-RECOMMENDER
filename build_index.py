@@ -112,7 +112,7 @@ def main() -> None:
             "vector_dimension": vector_dimension,
         }, f)
 
-    backend = "FAISS" if faiss_written else "NumPy fallback"
+    backend = "FAISS file written" if faiss_written else "pickle only"
     print(
         f"Saved {INDEX_PATH} with {len(catalog)} items, "
         f"{len(idf)} terms, {vector_dimension} dimensions, backend={backend}"

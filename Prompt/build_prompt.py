@@ -32,15 +32,17 @@ try:
     else:
         FAISS_INDEX = faiss.IndexFlatIP(VECTOR_DIMENSION)
         FAISS_INDEX.add(MATRIX.astype("float32"))
-except ImportError:
-    FAISS_INDEX = None
+except ImportError as exc:
+    raise RuntimeError(
+        "faiss-cpu is required for retrieval. Install dependencies with `uv sync` "
+        "or `pip install -r requirements.txt`."
+    ) from exc
 
 # Build a URL-to-item lookup for grounding checks.
 URL_SET = {item["url"] for item in CATALOG}
 NAME_TO_ITEM = {item["name"].lower(): item for item in CATALOG}
 
-backend = "FAISS" if FAISS_INDEX is not None else "NumPy fallback"
-print(f"Index loaded: {len(CATALOG)} assessments ({backend})")
+print(f"Index loaded: {len(CATALOG)} assessments (FAISS)")
 
 
 def _tokenize(text: str) -> list[str]:
@@ -68,17 +70,12 @@ def _tfidf_search(query: str, top_k: int = 15) -> list[dict]:
         return []
 
     q_vec = _query_vector(q_toks)
-    if FAISS_INDEX is not None:
-        scores, indices = FAISS_INDEX.search(q_vec.reshape(1, -1), top_k)
-        return [
-            CATALOG[i]
-            for score, i in zip(scores[0], indices[0])
-            if i >= 0 and score > 0
-        ]
-
-    scores = MATRIX @ q_vec
-    top_indices = np.argsort(scores)[::-1][:top_k]
-    return [CATALOG[i] for i in top_indices if scores[i] > 0]
+    scores, indices = FAISS_INDEX.search(q_vec.reshape(1, -1), top_k)
+    return [
+        CATALOG[i]
+        for score, i in zip(scores[0], indices[0])
+        if i >= 0 and score > 0
+    ]
 
 
 def _format_catalog_snippet(items: list[dict]) -> str:
@@ -180,3 +177,39 @@ def _validate_recommendations(recs: list[dict]) -> list[Recommendation]:
                     test_type=item["test_type"],
                 ))
     return valid[:10]
+
+
+def _extract_recommendations_from_text(text: str) -> list[Recommendation]:
+    """
+    Final repair step: if the model put catalog items in reply text instead
+    of the recommendations array, recover any exact catalog URLs or names.
+    """
+    if not text:
+        return []
+
+    found: list[tuple[int, Recommendation]] = []
+    seen_urls = set()
+    lowered = text.lower()
+
+    for item in CATALOG:
+        url = item["url"]
+        name = item["name"]
+        url_pos = text.find(url)
+        name_pos = lowered.find(name.lower())
+
+        positions = [pos for pos in (url_pos, name_pos) if pos >= 0]
+        if not positions or url in seen_urls:
+            continue
+
+        found.append((
+            min(positions),
+            Recommendation(
+                name=name,
+                url=url,
+                test_type=item["test_type"],
+            ),
+        ))
+        seen_urls.add(url)
+
+    found.sort(key=lambda pair: pair[0])
+    return [rec for _, rec in found[:10]]
