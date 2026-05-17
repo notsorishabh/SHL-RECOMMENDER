@@ -7,22 +7,8 @@ from Prompt.build_prompt import (
     _extract_recommendations_from_text,
     _validate_recommendations,
 )
-
+from dotenv import load_dotenv
 router = APIRouter()
-
-def _load_env_file() -> None:
-    env_path = os.path.join(os.getcwd(), ".env")
-    if not os.path.exists(env_path):
-        return
-
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-
 
 def _gemini_contents(messages):
     contents = []
@@ -36,7 +22,7 @@ def _gemini_contents(messages):
 
 
 def _call_gemini(system: str, messages: list[dict]) -> str:
-    _load_env_file()
+    load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(
